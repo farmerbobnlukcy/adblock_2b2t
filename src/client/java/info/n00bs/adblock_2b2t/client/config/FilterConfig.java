@@ -29,6 +29,7 @@ public class FilterConfig {
     private boolean debugMode = false; // Debug mode to show blocked messages
     private boolean autoRefreshEnabled = true; // Auto refresh remote filters
     private int autoRefreshDelay = 5; // Auto refresh delay in minutes
+    private boolean highlightFavorites = true; // Highlight messages from favorite users
 
     public FilterConfig() {
         // Create config directories if they don't exist
@@ -141,6 +142,15 @@ public class FilterConfig {
         saveConfig();
     }
 
+    public boolean isHighlightFavorites() {
+        return highlightFavorites;
+    }
+
+    public void setHighlightFavorites(boolean highlightFavorites) {
+        this.highlightFavorites = highlightFavorites;
+        saveConfig();
+    }
+
     /**
      * Saves the current configuration to a JSON file.
      */
@@ -161,6 +171,7 @@ public class FilterConfig {
             config.addProperty("debugMode", debugMode);
             config.addProperty("autoRefreshEnabled", autoRefreshEnabled);
             config.addProperty("autoRefreshDelay", autoRefreshDelay);
+            config.addProperty("highlightFavorites", highlightFavorites);
 
             // Write to file
             try (FileWriter writer = new FileWriter(CONFIG_FILE)) {
@@ -218,6 +229,10 @@ public class FilterConfig {
                 if (autoRefreshDelay < 1) {
                     autoRefreshDelay = 1; // Ensure minimum 1 minute
                 }
+            }
+
+            if (config.has("highlightFavorites")) {
+                highlightFavorites = config.get("highlightFavorites").getAsBoolean();
             }
 
             System.out.println("AdBlock configuration loaded from " + CONFIG_FILE);

@@ -4,7 +4,8 @@
   "package": "info.n00bs.adblock_2b2t.mixin.client",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "ChatMessageMixin"
+    "ChatMessageMixin",
+    "ChatScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

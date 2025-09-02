@@ -5,8 +5,10 @@ import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
+import java.util.List;
 import info.n00bs.adblock_2b2t.client.config.FilterCategory;
 import info.n00bs.adblock_2b2t.client.config.FilterConfig;
+import info.n00bs.adblock_2b2t.client.favorites.FavoritesManager;
 import info.n00bs.adblock_2b2t.client.filter.MessageFilter;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
@@ -92,6 +94,30 @@ public class FilterCommands {
                         )
                     )
                 )
+                .then(ClientCommandManager.literal("favorites")
+                    .then(ClientCommandManager.literal("add")
+                        .then(ClientCommandManager.argument("username", StringArgumentType.string())
+                            .executes(FilterCommands::executeAddFavorite)
+                        )
+                    )
+                    .then(ClientCommandManager.literal("remove")
+                        .then(ClientCommandManager.argument("username", StringArgumentType.string())
+                            .executes(FilterCommands::executeRemoveFavorite)
+                        )
+                    )
+                    .then(ClientCommandManager.literal("list")
+                        .executes(FilterCommands::executeListFavorites)
+                    )
+                    .then(ClientCommandManager.literal("clear")
+                        .executes(FilterCommands::executeClearFavorites)
+                    )
+                    .then(ClientCommandManager.literal("enable")
+                        .executes(context -> executeFavoritesHighlight(context, true))
+                    )
+                    .then(ClientCommandManager.literal("disable")
+                        .executes(context -> executeFavoritesHighlight(context, false))
+                    )
+                )
                 .then(ClientCommandManager.literal("help")
                     .executes(FilterCommands::executeHelp)
                 )
@@ -143,6 +169,12 @@ public class FilterCommands {
                 .formatted(config.isUseCustomFilters() ? Formatting.GREEN : Formatting.RED));
         context.getSource().sendFeedback(Text.literal("Debug mode: " + config.isDebugMode())
                 .formatted(config.isDebugMode() ? Formatting.GREEN : Formatting.RED));
+
+        int favoritesCount = FavoritesManager.getInstance().getFavorites().size();
+        context.getSource().sendFeedback(Text.literal("Favorites highlighting: " + config.isHighlightFavorites())
+                .formatted(config.isHighlightFavorites() ? Formatting.GREEN : Formatting.RED));
+        context.getSource().sendFeedback(Text.literal("Favorites count: " + favoritesCount)
+                .formatted(Formatting.AQUA));
         return 1;
     }
 
@@ -293,6 +325,99 @@ public class FilterCommands {
     }
 
     /**
+     * Executes the add favorite command.
+     * 
+     * @param context The command context
+     * @return 1 for success
+     */
+    private static int executeAddFavorite(CommandContext<FabricClientCommandSource> context) {
+        String username = StringArgumentType.getString(context, "username");
+
+        if (FavoritesManager.getInstance().addFavorite(username)) {
+            context.getSource().sendFeedback(Text.literal("Added ").formatted(Formatting.GREEN)
+                    .append(Text.literal(username).formatted(Formatting.GOLD))
+                    .append(Text.literal(" to favorites").formatted(Formatting.GREEN)));
+        } else {
+            context.getSource().sendFeedback(Text.literal(username + " is already in favorites").formatted(Formatting.YELLOW));
+        }
+
+        return 1;
+    }
+
+    /**
+     * Executes the remove favorite command.
+     * 
+     * @param context The command context
+     * @return 1 for success
+     */
+    private static int executeRemoveFavorite(CommandContext<FabricClientCommandSource> context) {
+        String username = StringArgumentType.getString(context, "username");
+
+        if (FavoritesManager.getInstance().removeFavorite(username)) {
+            context.getSource().sendFeedback(Text.literal("Removed ").formatted(Formatting.GREEN)
+                    .append(Text.literal(username).formatted(Formatting.GOLD))
+                    .append(Text.literal(" from favorites").formatted(Formatting.GREEN)));
+        } else {
+            context.getSource().sendFeedback(Text.literal(username + " is not in favorites").formatted(Formatting.YELLOW));
+        }
+
+        return 1;
+    }
+
+    /**
+     * Executes the list favorites command.
+     * 
+     * @param context The command context
+     * @return 1 for success
+     */
+    private static int executeListFavorites(CommandContext<FabricClientCommandSource> context) {
+        List<String> favorites = FavoritesManager.getInstance().getFavorites();
+
+        if (favorites.isEmpty()) {
+            context.getSource().sendFeedback(Text.literal("No favorites added yet").formatted(Formatting.YELLOW));
+        } else {
+            context.getSource().sendFeedback(Text.literal("=== Favorites List (" + favorites.size() + ") ===").formatted(Formatting.GOLD));
+            for (String username : favorites) {
+                context.getSource().sendFeedback(Text.literal("★ ").formatted(Formatting.GOLD)
+                        .append(Text.literal(username).formatted(Formatting.WHITE)));
+            }
+        }
+
+        return 1;
+    }
+
+    /**
+     * Executes the clear favorites command.
+     * 
+     * @param context The command context
+     * @return 1 for success
+     */
+    private static int executeClearFavorites(CommandContext<FabricClientCommandSource> context) {
+        FavoritesManager.getInstance().clearFavorites();
+        context.getSource().sendFeedback(Text.literal("All favorites have been cleared").formatted(Formatting.GREEN));
+        return 1;
+    }
+
+    /**
+     * Executes the favorites highlight enable/disable command.
+     * 
+     * @param context The command context
+     * @param enable Whether to enable or disable favorites highlighting
+     * @return 1 for success
+     */
+    private static int executeFavoritesHighlight(CommandContext<FabricClientCommandSource> context, boolean enable) {
+        FilterConfig.getInstance().setHighlightFavorites(enable);
+
+        if (enable) {
+            context.getSource().sendFeedback(Text.literal("Favorites highlighting has been enabled").formatted(Formatting.GREEN));
+        } else {
+            context.getSource().sendFeedback(Text.literal("Favorites highlighting has been disabled").formatted(Formatting.RED));
+        }
+
+        return 1;
+    }
+
+    /**
      * Executes the help command.
      * 
      * @param context The command context
@@ -320,6 +445,16 @@ public class FilterCommands {
                 .append(Text.literal(" - Enable/disable automatic refreshing of remote filters").formatted(Formatting.WHITE)));
         context.getSource().sendFeedback(Text.literal("/adblock autorefresh delay <minutes>").formatted(Formatting.YELLOW)
                 .append(Text.literal(" - Set the delay between automatic refreshes (in minutes)").formatted(Formatting.WHITE)));
+        context.getSource().sendFeedback(Text.literal("/adblock favorites add <username>").formatted(Formatting.YELLOW)
+                .append(Text.literal(" - Add a user to favorites list").formatted(Formatting.WHITE)));
+        context.getSource().sendFeedback(Text.literal("/adblock favorites remove <username>").formatted(Formatting.YELLOW)
+                .append(Text.literal(" - Remove a user from favorites list").formatted(Formatting.WHITE)));
+        context.getSource().sendFeedback(Text.literal("/adblock favorites list").formatted(Formatting.YELLOW)
+                .append(Text.literal(" - Show all favorite users").formatted(Formatting.WHITE)));
+        context.getSource().sendFeedback(Text.literal("/adblock favorites clear").formatted(Formatting.YELLOW)
+                .append(Text.literal(" - Clear all favorites").formatted(Formatting.WHITE)));
+        context.getSource().sendFeedback(Text.literal("/adblock favorites enable|disable").formatted(Formatting.YELLOW)
+                .append(Text.literal(" - Enable/disable favorites highlighting").formatted(Formatting.WHITE)));
 
         return 1;
     }

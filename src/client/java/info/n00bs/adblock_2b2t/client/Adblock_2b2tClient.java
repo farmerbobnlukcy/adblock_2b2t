@@ -2,6 +2,7 @@ package info.n00bs.adblock_2b2t.client;
 
 import info.n00bs.adblock_2b2t.client.command.FilterCommands;
 import info.n00bs.adblock_2b2t.client.config.FilterConfig;
+import info.n00bs.adblock_2b2t.client.favorites.FavoritesManager;
 import info.n00bs.adblock_2b2t.client.filter.MessageFilter;
 import net.fabricmc.api.ClientModInitializer;
 import net.minecraft.client.MinecraftClient;
@@ -23,6 +24,9 @@ public class Adblock_2b2tClient implements ClientModInitializer {
 
         // Initialize message filter
         MessageFilter.getInstance().initialize();
+
+        // Initialize favorites manager
+        FavoritesManager.getInstance().initialize();
 
         // Log initialization
         System.out.println("2b2t AdBlock mod initialized");
